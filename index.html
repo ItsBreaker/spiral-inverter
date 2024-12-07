@@ -1,0 +1,326 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Spiral Inversion Visualization</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/plotly.js/2.24.2/plotly.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            line-height: 1.6;
+            color: #1a1a1a;
+            background-color: #f8f9fa;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 2.5rem;
+        }
+
+        h1 {
+            font-size: 2.5rem;
+            font-weight: 700;
+            color: #2d3748;
+            margin-bottom: 0.5rem;
+        }
+
+        .subtitle {
+            color: #718096;
+            font-size: 1.1rem;
+        }
+
+        .main-content {
+            display: grid;
+            grid-template-columns: 300px 1fr;
+            gap: 2rem;
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+            overflow: hidden;
+        }
+
+        .controls {
+            background-color: #fff;
+            padding: 2rem;
+            border-right: 1px solid #e2e8f0;
+        }
+
+        .control-group {
+            margin-bottom: 2rem;
+        }
+
+        .control-group h3 {
+            font-size: 1.2rem;
+            color: #2d3748;
+            margin-bottom: 1.5rem;
+            font-weight: 600;
+        }
+
+        .input-group {
+            margin-bottom: 1.5rem;
+        }
+
+        .input-row {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+
+        label {
+            font-size: 0.9rem;
+            font-weight: 500;
+            color: #4a5568;
+        }
+
+        input[type="range"] {
+            width: 100%;
+            height: 6px;
+            background: #e2e8f0;
+            border-radius: 3px;
+            -webkit-appearance: none;
+        }
+
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 16px;
+            height: 16px;
+            background: #4299e1;
+            border-radius: 50%;
+            cursor: pointer;
+            transition: background 0.15s ease;
+        }
+
+        input[type="range"]::-webkit-slider-thumb:hover {
+            background: #3182ce;
+        }
+
+        input[type="text"] {
+            width: 80px;
+            padding: 0.5rem;
+            border: 1px solid #e2e8f0;
+            border-radius: 6px;
+            font-size: 0.9rem;
+            text-align: center;
+            transition: border-color 0.15s ease;
+        }
+
+        input[type="text"]:focus {
+            outline: none;
+            border-color: #4299e1;
+            box-shadow: 0 0 0 3px rgba(66, 153, 225, 0.1);
+        }
+
+        .plot-container {
+            padding: 2rem;
+            background: white;
+        }
+
+        #plot {
+            width: 100%;
+            height: 600px;
+            border-radius: 8px;
+        }
+
+        .error {
+            color: #e53e3e;
+            font-size: 0.875rem;
+            margin-top: 0.5rem;
+        }
+
+        /* Value display next to slider */
+        .value-display {
+            background: #edf2f7;
+            padding: 0.25rem 0.5rem;
+            border-radius: 4px;
+            font-size: 0.875rem;
+            color: #4a5568;
+        }
+
+        .parameter-row {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Spiral Inversion Visualization</h1>
+        </div>
+        
+        <div class="main-content">
+            <div class="controls">
+                <div class="control-group">
+                    <h3>Spiral Parameters</h3>
+                    <div class="input-group">
+                        <div class="input-row">
+                            <label>Initial Radius (a)</label>
+                            <div class="parameter-row">
+                                <input type="range" id="aSlider" min="0.1" max="2" step="0.1" value="0.5">
+                                <input type="text" id="aInput" value="0.5">
+                            </div>
+                        </div>
+                    </div>
+                    <div class="input-group">
+                        <div class="input-row">
+                            <label>Growth Rate (b)</label>
+                            <div class="parameter-row">
+                                <input type="range" id="bSlider" min="0.1" max="1" step="0.1" value="0.4">
+                                <input type="text" id="bInput" value="0.4">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="plot-container">
+                <div id="plot"></div>
+                <div id="error" class="error"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function spiral(t, a, b) {
+            const r = a * Math.exp(b * t);
+            return {
+                real: r * Math.cos(2 * t),
+                imag: r * Math.sin(2 * t)
+            };
+        }
+
+        function complexConj(z) {
+            return {
+                real: z.real,
+                imag: -z.imag
+            };
+        }
+
+        function inversion(z) {
+            const conj = complexConj(z);
+            const denom = conj.real * conj.real + conj.imag * conj.imag;
+            return {
+                real: conj.real / denom,
+                imag: -conj.imag / denom
+            };
+        }
+
+        function updatePlot() {
+            try {
+                const a = parseFloat(document.getElementById('aInput').value);
+                const b = parseFloat(document.getElementById('bInput').value);
+
+                const t = Array.from({length: 500}, (_, i) => i * 8 * Math.PI / 499);
+                
+                const spiralPoints = t.map(t => spiral(t, a, b));
+                const x = spiralPoints.map(p => p.real);
+                const y = spiralPoints.map(p => p.imag);
+
+                const inversionPoints = spiralPoints.map(p => inversion(p));
+                const xInv = inversionPoints.map(p => p.real);
+                const yInv = inversionPoints.map(p => p.imag);
+
+                const data = [
+                    {
+                        x: x,
+                        y: y,
+                        type: 'scatter',
+                        mode: 'lines',
+                        name: 'Original Spiral',
+                        line: {
+                            color: '#3182ce',
+                            width: 2
+                        }
+                    },
+                    {
+                        x: xInv,
+                        y: yInv,
+                        type: 'scatter',
+                        mode: 'lines',
+                        name: 'Inverted Spiral',
+                        line: {
+                            color: '#e53e3e',
+                            width: 2
+                        }
+                    }
+                ];
+
+                const layout = {
+                    showlegend: true,
+                    xaxis: {
+                        range: [-10, 10],
+                        gridcolor: '#f0f0f0',
+                        zerolinecolor: '#e2e8f0'
+                    },
+                    yaxis: {
+                        range: [-10, 10],
+                        scaleanchor: 'x',
+                        scaleratio: 1,
+                        gridcolor: '#f0f0f0',
+                        zerolinecolor: '#e2e8f0'
+                    },
+                    paper_bgcolor: 'white',
+                    plot_bgcolor: 'white',
+                    margin: {
+                        l: 40,
+                        r: 40,
+                        t: 40,
+                        b: 40
+                    },
+                    font: {
+                        family: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
+                    },
+                    hovermode: 'closest'
+                };
+
+                const config = {
+                    responsive: true,
+                    displayModeBar: false
+                };
+
+                Plotly.newPlot('plot', data, layout, config);
+                document.getElementById('error').textContent = '';
+            } catch (err) {
+                document.getElementById('error').textContent = 'Error: ' + err.message;
+            }
+        }
+
+        ['a', 'b'].forEach(id => {
+            const slider = document.getElementById(id + 'Slider');
+            const input = document.getElementById(id + 'Input');
+            
+            slider.addEventListener('input', () => {
+                input.value = slider.value;
+                updatePlot();
+            });
+            
+            input.addEventListener('input', () => {
+                const value = parseFloat(input.value);
+                if (!isNaN(value)) {
+                    slider.value = value;
+                    updatePlot();
+                }
+            });
+        });
+
+        updatePlot();
+
+        // Handle responsive resizing
+        window.addEventListener('resize', () => {
+            Plotly.Plots.resize('plot');
+        });
+    </script>
+</body>
+</html>
